@@ -321,11 +321,12 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 
 <!-- INVENTORY -->
 <div class="screen" id="sc-inv">
-  <div style="padding:8px 1rem 4px"><input type="text" id="inv-q" placeholder="🔍 Cari produk..." style="font-size:13px" oninput="rInvStock()"/></div>
+  <div style="padding:8px 1rem 4px"><input type="text" id="inv-q" placeholder="🔍 Cari produk..." style="font-size:13px" oninput="rInvStock();rPL()"/></div>
   <div class="cr" id="inv-tabs"></div>
   <div id="inv-p-stock" style="padding:0 1rem"><div id="inv-alerts"></div><div id="inv-sl"></div></div>
   <div id="inv-p-products" style="display:none">
     <div style="padding:.75rem 1rem 0"><button class="btn bo" style="margin-bottom:10px" onclick="gS('sc-add-prod')">+ Tambah produk</button></div>
+    <div class="cr" id="inv-p-cat"></div>
     <div style="padding:0 1rem" id="inv-pl"></div>
   </div>
   <div id="inv-p-log" style="display:none">
@@ -492,6 +493,11 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
       <button class="btn bo" onclick="openManageCats()">✏️ Edit kategori</button>
     </div>
   </div>
+  <div class="stt" style="margin-top:8px">Promo & Voucher</div>
+  <div style="padding:0 1rem">
+    <button class="btn bo" style="margin-bottom:10px" onclick="openPromoForm()">+ Tambah promo</button>
+    <div id="promo-list"></div>
+  </div>
   <div class="stt" style="margin-top:8px">Backup & Export</div>
   <div style="padding:0 1rem">
     <div class="card">
@@ -580,6 +586,38 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   <button class="btn bo" onclick="cSh()" style="margin-top:8px">Tutup</button>
 </div>
 
+<div class="sheet" id="sh-promo">
+  <div class="sh"></div>
+  <div style="font-size:15px;font-weight:500;margin-bottom:14px" id="promo-sh-title">Tambah Promo</div>
+  <div class="pg" style="margin-bottom:12px">
+    <button class="pb sel" id="pt-code" onclick="sPromoType('code')">Kode voucher</button>
+    <button class="pb" id="pt-auto" onclick="sPromoType('auto')">Otomatis</button>
+  </div>
+  <div class="fg" id="promo-code-g"><label class="fl">Kode voucher</label><input type="text" id="pr-code" placeholder="DISKON10" style="text-transform:uppercase"/></div>
+  <div class="fg"><label class="fl">Nama promo</label><input type="text" id="pr-name" placeholder="Diskon spesial..."/></div>
+  <div class="fg"><label class="fl">Deskripsi (opsional)</label><input type="text" id="pr-desc"/></div>
+  <div class="fg"><label class="fl">Jenis diskon</label><select id="pr-disc-type" onchange="onPromoDiscTypeChange()">
+    <option value="percent">Persen (%)</option>
+    <option value="nominal">Nominal (Rp)</option>
+    <option value="free_shipping">Gratis ongkir</option>
+    <option value="shipping_discount">Potongan ongkir (Rp)</option>
+  </select></div>
+  <div class="fg" id="promo-value-g"><label class="fl" id="pr-value-lbl">Nilai diskon</label><input type="number" id="pr-value" placeholder="0"/></div>
+  <div class="fg"><label class="fl">Minimum pembelian (Rp, opsional)</label><input type="number" id="pr-min" placeholder="0"/></div>
+  <div class="fg"><label class="fl">Berlaku untuk</label><select id="pr-applies">
+    <option value="all">Semua order</option>
+    <option value="out_of_bandung">Luar Bandung</option>
+  </select></div>
+  <div class="fg"><label class="fl">Berlaku sampai (opsional)</label><input type="date" id="pr-expires"/></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:500">Aktif</div>
+    <div id="pr-active-tgl" class="tgl on" onclick="this.classList.toggle('on')"><div class="tk"></div></div>
+  </div>
+  <button class="btn bw" onclick="savePromo()" style="margin-bottom:7px">Simpan promo</button>
+  <button class="btn bd" id="promo-del-btn" onclick="deletePromo()" style="display:none;margin-bottom:7px">🗑 Hapus promo</button>
+  <button class="btn bo" onclick="cSh()">Batal</button>
+</div>
+
 <div class="sheet" id="sh-ei">
   <div class="sh"></div>
   <div style="font-size:15px;font-weight:500;margin-bottom:14px">Edit Invoice</div>
@@ -620,13 +658,14 @@ function iBS(d,dy=7){if(!d)return false;const t=new Date(),b=new Date(d);b.setFu
 function bH(c){if(!c||!c.petBday)return null;const bd=new Date(c.petBday);if(iBT(c.petBday))return`🎂 Hari ini ulang tahun <b>${c.pet||'anabul'}</b>-nya ${c.name}!`;if(iBS(c.petBday))return`🎂 Ulang tahun <b>${c.pet||'anabul'}</b>-nya ${c.name} dekat! (${bd.getDate()} ${MO[bd.getMonth()]})`;return null;}
 function cSt(mv){let r=0,c=0,gv=0,sq=0,gq=0;mv.forEach(m=>{const p=gP(m.productId),b=gB(m.productId,m.batchId);if(!p||!b)return;if(m.type==='sale'){r+=p.price*m.qty;c+=b.hpp*m.qty;sq+=m.qty;}if(m.type==='gift'){gv+=p.price*m.qty;gq+=m.qty;}});return{revenue:r,cogs:c,giftVal:gv,grossProfit:r-c,margin:r?((r-c)/r*100):0,saleQty:sq,giftQty:gq};}
 
-let prods=[],custs=[],invs=[],movs=[],orders=[];
+let prods=[],custs=[],invs=[],movs=[],orders=[],promos=[];
 let ordFlt='all',curOrder=null;
+let curPromo=null,promoType='code';
 let cats=[{id:'cooked-food',name:'Cooked food'},{id:'herbs',name:'Herbs'},{id:'dehydrated',name:'Dehydrated'},{id:'chew',name:'Chew'},{id:'broth',name:'Broth'}];
 let cfg={name:'First Bite Instinct (FBI)',phone:'+62 851-1783-8911',city:'Bandung, Jawa Barat',minStock:10};
 let cart=[],selPay_='transfer',lastInv=null,invFlt='all';
 let selCat='all',aTab='pos';
-let invTab='stock',logFlt='all';
+let invTab='stock',logFlt='all',invPCat='all';
 let custFlt='all',curCust=null,editCust=null,cdTab='hist';
 let finTab='ov',rptMo=td().slice(0,7);
 let movT='sale',isNB=false,editProd=null;
@@ -646,16 +685,18 @@ async function dbLoad(){
     sb.from('movements').select('*').order('created_at',{ascending:false}),
     sb.from('settings').select('*').limit(1),
     sb.from('orders').select('*').order('created_at',{ascending:false}),
-    sb.from('order_items').select('*')
+    sb.from('order_items').select('*'),
+    sb.from('promos').select('*').order('created_at',{ascending:false})
   ]);
   results.forEach((r,i)=>{if(r.error)console.error('DB error',i,r.error);});
-  const[{data:ps},{data:bs},{data:cs},{data:is},{data:its},{data:ms},{data:ss},{data:os},{data:ois}]=results;
+  const[{data:ps},{data:bs},{data:cs},{data:is},{data:its},{data:ms},{data:ss},{data:os},{data:ois},{data:prs}]=results;
   prods=(ps||[]).filter(p=>p.min_stock!==-1).map(p=>({id:p.id,name:p.name,description:p.description||'',category:p.category,price:p.price,minStock:p.min_stock,image_url:p.image_url||null,weight_gram:p.weight_gram||0,batches:(bs||[]).filter(b=>b.product_id===p.id).map(b=>({id:b.id,code:b.code,stock:b.stock,active:b.active,date:b.date,exp:b.exp,hpp:b.hpp||0}))}));
   custs=(cs||[]).map(c=>({id:c.id,name:c.name,phone:c.phone,address:c.address,pet:c.pet,breed:c.breed,petBday:c.pet_bday,notes:c.notes}));
   invs=(is||[]).map(inv=>({id:inv.id,no:inv.no,customer:inv.customer,date:inv.date,subtotal:inv.subtotal,discount:inv.discount,shipping:inv.shipping,total:inv.total,payment:inv.payment,status:inv.status,note:inv.note,voidReason:inv.void_reason,items:(its||[]).filter(i=>i.invoice_id===inv.id).map(i=>({productId:i.product_id,productName:i.product_name,batchId:i.batch_id,batchCode:i.batch_code,qty:i.qty,price:i.price,hpp:i.hpp}))}));
   movs=(ms||[]).map(m=>({id:m.id,type:m.type,productId:m.product_id,batchId:m.batch_id,qty:m.qty,date:m.date,note:m.note,recipient:m.recipient}));
   if(ss&&ss[0]){const s=ss[0];cfg={name:s.store_name,phone:s.phone,city:s.city,minStock:s.min_stock};if(s.categories){try{const lc=JSON.parse(s.categories);if(lc&&lc.length)cats=lc;}catch(e){}}}
   orders=(os||[]).map(o=>({id:o.id,no:o.order_no,customerName:o.customer_name,customerPhone:o.customer_phone,shippingName:o.shipping_name,shippingPhone:o.shipping_phone,shippingAddress:o.shipping_address,shippingCity:o.shipping_city,courier:o.courier,courierService:o.courier_service,shippingCost:o.shipping_cost||0,subtotal:o.subtotal||0,discountAmount:o.discount_amount||0,shippingDiscount:o.shipping_discount||0,total:o.total||0,paymentStatus:o.payment_status,paymentProofUrl:o.payment_proof_url,paymentVerified:o.payment_verified,orderStatus:o.order_status,notes:o.notes,createdAt:o.created_at,items:(ois||[]).filter(i=>i.order_id===o.id).map(i=>({id:i.id,productId:i.product_id,productName:i.product_name,variant:i.variant,qty:i.qty,price:i.price,packed:!!i.packed}))}));
+  promos=prs||[];
 }
 
 async function dbUB(bid,stock,active){sync();const u={stock};if(active!==undefined)u.active=active;await sb.from('batches').update(u).eq('id',bid);}
@@ -694,7 +735,7 @@ function prevImg(input,imgId,phId){
 }
 
 function gS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');cSh();if(id==='sc-cart')rCart();if(id==='sc-co')rCO();if(id==='sc-invs'){invFlt='all';rIL();}if(id==='sc-orders'){ordFlt='all';rOL();}}
-function sTab(t){aTab=t;['pos','orders','inventory','customers','finance','settings'].forEach(x=>document.getElementById('ni-'+x).classList.toggle('active',x===t));const m={pos:'sc-pos',orders:'sc-orders',inventory:'sc-inv',customers:'sc-custs',finance:'sc-fin',settings:'sc-settings'};gS(m[t]);if(t==='pos'){rCats();rG();}if(t==='orders')rOL();if(t==='inventory'){rITabs();rInvStock();}if(t==='customers'){rCFlt();rCL();}if(t==='finance'){rFTabs();rFOv();}if(t==='settings')rSF();}
+function sTab(t){aTab=t;['pos','orders','inventory','customers','finance','settings'].forEach(x=>document.getElementById('ni-'+x).classList.toggle('active',x===t));const m={pos:'sc-pos',orders:'sc-orders',inventory:'sc-inv',customers:'sc-custs',finance:'sc-fin',settings:'sc-settings'};gS(m[t]);if(t==='pos'){rCats();rG();}if(t==='orders')rOL();if(t==='inventory'){rITabs();rInvStock();}if(t==='customers'){rCFlt();rCL();}if(t==='finance'){rFTabs();rFOv();}if(t==='settings'){rSF();rPromoList();}}
 function oSh(id){document.getElementById(id).classList.add('open');document.getElementById('ov').classList.add('open');}
 function cSh(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));document.getElementById('ov').classList.remove('open');}
 
@@ -849,7 +890,7 @@ function dlInvPDF(){const inv=invs.find(x=>x.id===lastInv);if(!inv)return;try{co
 function rITabs(){const t=['stock','products','log'];const l={stock:'Stok',products:'Produk',log:'Log gerakan'};document.getElementById('inv-tabs').innerHTML=t.map(x=>`<button class="chip ${invTab===x?'active':''}" onclick="sITab('${x}')">${l[x]}</button>`).join('');}
 function sITab(t){invTab=t;rITabs();['stock','products','log'].forEach(x=>{document.getElementById('inv-p-'+x).style.display=x===t?'':'none';});if(t==='stock')rInvStock();if(t==='products')rPL();if(t==='log')rLL();}
 function rInvStock(){const q=(document.getElementById('inv-q').value||'').toLowerCase();const fl=prods.filter(p=>!p.archived&&p.name.toLowerCase().includes(q));let ah='';fl.filter(p=>tS(p)===0).forEach(p=>{ah+=`<div class="ab ae">Stok habis: ${p.name}</div>`;});fl.filter(p=>tS(p)>0&&tS(p)<=p.minStock).forEach(p=>{ah+=`<div class="ab aw">Hampir habis: ${p.name} (${tS(p)} pcs)</div>`;});document.getElementById('inv-alerts').innerHTML=ah;const now=td().slice(0,7);document.getElementById('inv-sl').innerHTML=fl.map(p=>{const st=tS(p),b=ab(p),low=st<=p.minStock&&st>0,out=st===0;const bc=out?'bout':low?'blow':'bok';const bt=out?'Habis':low?'Hampir habis':'Aman';return`<div class="csm" onclick="openPD('${p.id}')" style="cursor:pointer;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:flex-start">${p.image_url?`<img src="${p.image_url}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;margin-right:10px;flex-shrink:0" onerror="this.style.display='none'"/>`:'<div style="width:40px;height:40px;border-radius:6px;background:var(--bg3);margin-right:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">📦</div>'}<div style="flex:1"><div style="font-size:14px;font-weight:500">${p.name}</div><div style="font-size:11px;color:var(--t3);font-family:monospace;margin-top:2px">${b?b.code:'-'}</div></div><span class="badge ${bc}">${bt}</span></div><hr class="div"><div style="display:grid;grid-template-columns:repeat(3,1fr);text-align:center"><div><div style="font-size:17px;font-weight:500">${st}</div><div style="font-size:10px;color:var(--t3)">Total stok</div></div><div><div style="font-size:17px;font-weight:500;color:var(--err)">${movs.filter(m=>m.productId===p.id&&(m.type==='sale'||m.type==='gift')&&m.date.startsWith(now)).reduce((s,m)=>s+m.qty,0)}</div><div style="font-size:10px;color:var(--t3)">Keluar bulan ini</div></div><div><div style="font-size:17px;font-weight:500;color:var(--t3)">${p.minStock}</div><div style="font-size:10px;color:var(--t3)">Min. alert</div></div></div></div>`;}).join('')||'<div style="text-align:center;padding:2rem;font-size:13px;color:var(--t3)">Belum ada produk</div>';}
-function rPL(){const CL=getCL();document.getElementById('inv-pl').innerHTML=prods.filter(p=>!p.archived).map(p=>`<div class="csm" onclick="openPD('${p.id}')" style="cursor:pointer;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px">${p.image_url?`<img src="${p.image_url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'"/>`:'<div style="width:44px;height:44px;border-radius:6px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>'}<div style="flex:1"><div style="font-size:14px;font-weight:500">${p.name}</div><div style="font-size:12px;color:var(--t3)">${CL[p.category]||p.category} · ${fR(p.price)}</div></div><div style="text-align:right"><div style="font-size:12px;color:var(--t3)">${p.batches.length} batch</div><div style="font-size:13px;font-weight:500">${tS(p)} pcs</div></div></div></div>`).join('')||'<div style="text-align:center;padding:2rem;font-size:13px;color:var(--t3)">Belum ada produk</div>';}
+function rPL(f){if(f!==undefined)invPCat=f;const CL=getCL();const allC=['all',...cats.map(x=>x.id)];document.getElementById('inv-p-cat').innerHTML=allC.map(x=>`<button class="chip ${invPCat===x?'active':''}" onclick="rPL('${x}')">${CL[x]||x}</button>`).join('');const q=(document.getElementById('inv-q').value||'').toLowerCase();document.getElementById('inv-pl').innerHTML=prods.filter(p=>!p.archived&&p.name.toLowerCase().includes(q)&&(invPCat==='all'||p.category===invPCat)).map(p=>`<div class="csm" onclick="openPD('${p.id}')" style="cursor:pointer;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px">${p.image_url?`<img src="${p.image_url}" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'"/>`:'<div style="width:44px;height:44px;border-radius:6px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>'}<div style="flex:1"><div style="font-size:14px;font-weight:500">${p.name}</div><div style="font-size:12px;color:var(--t3)">${CL[p.category]||p.category} · ${fR(p.price)}</div></div><div style="text-align:right"><div style="font-size:12px;color:var(--t3)">${p.batches.length} batch</div><div style="font-size:13px;font-weight:500">${tS(p)} pcs</div></div></div></div>`).join('')||'<div style="text-align:center;padding:2rem;font-size:13px;color:var(--t3)">Belum ada produk</div>';}
 function rLL(f){if(f)logFlt=f;const c=['all','sale','gift','in','adj'];const l={all:'Semua',sale:'Penjualan',gift:'Gift',in:'Masuk',adj:'Penyesuaian'};document.getElementById('log-flt').innerHTML=c.map(x=>`<button class="chip ${logFlt===x?'active':''}" onclick="rLL('${x}')">${l[x]}</button>`).join('');const fl=logFlt==='all'?movs:movs.filter(m=>m.type===logFlt);const ti={sale:['binfo','Penjualan'],gift:['blow','Gift'],in:['bok','Masuk'],adj:['bvoid','Adj']};const el=document.getElementById('inv-ll');if(!fl.length){el.innerHTML='<div style="text-align:center;padding:1rem;font-size:13px;color:var(--t3)">Belum ada data</div>';return;}el.innerHTML=fl.slice(0,50).map(m=>{const p=gP(m.productId),b=gB(m.productId,m.batchId);const isIn=m.type==='in'||(m.type==='adj'&&m.qty>0);const[bc,bl]=ti[m.type]||['binfo','?'];return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:.5px solid var(--b)"><div style="flex:1"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="font-size:13px;font-weight:500">${p?p.name:'?'}</span><span class="badge ${bc}">${bl}</span></div><div style="font-size:11px;color:var(--t3);font-family:monospace">${b?b.code:'?'}</div>${m.recipient?`<div style="font-size:11px;color:var(--t3)">${m.recipient}</div>`:''}</div><div style="text-align:right"><div style="font-size:14px;font-weight:500;color:${isIn?'var(--ok)':'var(--err)'}">${isIn?'+':''}${m.qty} pcs</div><div style="font-size:11px;color:var(--t3)">${m.date}</div></div></div>`;}).join('');}
 function openPD(pid){editProd=pid;const p=gP(pid);document.getElementById('pd-title').textContent=p.name;document.getElementById('pe-name').value=p.name;document.getElementById('pe-desc').value=p.description||'';fillCatSelect('pe-cat',p.category);document.getElementById('pe-price').value=p.price;document.getElementById('pe-min').value=p.minStock;document.getElementById('pe-weight').value=p.weight_gram||0;const peImg=document.getElementById('pe-img-show');const pePh=document.getElementById('pe-img-ph');if(p.image_url){peImg.src=p.image_url;peImg.style.display='block';if(pePh)pePh.style.display='none';}else{peImg.style.display='none';peImg.src='';if(pePh)pePh.style.display='';}document.getElementById('pe-img-file').value='';rPDB();gS('sc-prod-d');}
 function rPDB(){const p=gP(editProd);if(!p)return;document.getElementById('pd-batches').innerHTML=[...p.batches].reverse().map(b=>{const m=b.hpp&&p.price?(((p.price-b.hpp)/p.price)*100).toFixed(1):null;return`<div class="csm" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-family:monospace;font-size:13px;font-weight:500">${b.code}</div><div style="font-size:11px;color:var(--t3)">Exp: ${b.exp||'-'} · HPP: ${b.hpp?fR(b.hpp):'-'}${m?' · Margin '+m+'%':''}</div></div><div style="text-align:right"><div style="font-size:17px;font-weight:500">${b.stock}</div><span class="badge ${b.active?'bok':'bvoid'}">${b.active?'Aktif':'Lama'}</span></div></div></div>`;}).join('');}
@@ -908,6 +949,67 @@ function renderCatSheet(){document.getElementById('cat-sh-list').innerHTML=cats.
 function deleteCat(i){if(cats.length<=1){alert('Minimal 1 kategori');return;}const inputs=document.querySelectorAll('[id^="cat-inp-"]');inputs.forEach((inp,j)=>{if(cats[j])cats[j].name=inp.value||cats[j].name;});cats.splice(i,1);renderCatSheet();}
 function addCatRow(){const inputs=document.querySelectorAll('[id^="cat-inp-"]');inputs.forEach((inp,i)=>{if(cats[i])cats[i].name=inp.value||cats[i].name;});cats.push({id:'cat-'+Date.now(),name:'Kategori Baru'});renderCatSheet();setTimeout(()=>{const all=document.querySelectorAll('[id^="cat-inp-"]');if(all.length)all[all.length-1].focus();},50);}
 async function saveCats(){const inputs=document.querySelectorAll('[id^="cat-inp-"]');const newCats=[];inputs.forEach((inp,i)=>{const name=inp.value.trim();if(!name)return;const ex=cats[i];newCats.push({id:ex?ex.id:'cat-'+Date.now()+i,name});});if(!newCats.length){alert('Minimal 1 kategori');return;}cats=newCats;rCats();rSF();cSh();dbSS();}
+
+// PROMO & VOUCHER
+function rPromoList(){const el=document.getElementById('promo-list');if(!el)return;el.innerHTML=promos.length?promos.map(pr=>{const dl=pr.discount_type==='percent'?`${pr.discount_value}%`:pr.discount_type==='nominal'?fR(pr.discount_value):pr.discount_type==='free_shipping'?'Gratis ongkir':`Potongan ongkir ${fR(pr.discount_value)}`;return`<div class="csm" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div onclick="openPromoForm('${pr.id}')" style="cursor:pointer;flex:1;${pr.is_active?'':'opacity:.5'}"><div style="font-size:13px;font-weight:500">${pr.name}</div><div style="font-size:11px;color:var(--t3);font-family:monospace">${pr.type==='code'?pr.code:'Otomatis'}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${dl}${pr.min_purchase?' · min '+fR(pr.min_purchase):''}</div></div><div class="tgl ${pr.is_active?'on':''}" onclick="togglePromoActive('${pr.id}')"><div class="tk"></div></div></div></div>`;}).join(''):'<div style="text-align:center;padding:1.5rem;font-size:13px;color:var(--t3)">Belum ada promo</div>';}
+
+function sPromoType(t){promoType=t;['code','auto'].forEach(x=>document.getElementById('pt-'+x).classList.toggle('sel',x===t));document.getElementById('promo-code-g').style.display=t==='code'?'':'none';}
+function onPromoDiscTypeChange(){const t=document.getElementById('pr-disc-type').value;document.getElementById('promo-value-g').style.display=t==='free_shipping'?'none':'';document.getElementById('pr-value-lbl').textContent=t==='percent'?'Nilai diskon (%)':'Nilai diskon (Rp)';}
+
+function openPromoForm(id){
+  curPromo=id||null;const pr=id?promos.find(x=>x.id===id):null;
+  document.getElementById('promo-sh-title').textContent=pr?'Edit Promo':'Tambah Promo';
+  sPromoType(pr?pr.type:'code');
+  document.getElementById('pr-code').value=pr?.code||'';
+  document.getElementById('pr-name').value=pr?.name||'';
+  document.getElementById('pr-desc').value=pr?.description||'';
+  document.getElementById('pr-disc-type').value=pr?.discount_type||'percent';
+  onPromoDiscTypeChange();
+  document.getElementById('pr-value').value=pr?.discount_value||'';
+  document.getElementById('pr-min').value=pr?.min_purchase||'';
+  document.getElementById('pr-applies').value=pr?.applies_to||'all';
+  document.getElementById('pr-expires').value=pr?.expires_at?pr.expires_at.slice(0,10):'';
+  document.getElementById('pr-active-tgl').classList.toggle('on',pr?pr.is_active:true);
+  document.getElementById('promo-del-btn').style.display=pr?'':'none';
+  oSh('sh-promo');
+}
+
+async function savePromo(){
+  const type=promoType;
+  const code=document.getElementById('pr-code').value.trim().toUpperCase();
+  const name=document.getElementById('pr-name').value.trim();
+  if(type==='code'&&!code){alert('Kode voucher wajib diisi');return;}
+  if(!name){alert('Nama promo wajib diisi');return;}
+  if(type==='code'&&promos.some(x=>x.code===code&&x.id!==curPromo)){alert('Kode voucher ini sudah dipakai, gunakan kode lain');return;}
+  const discType=document.getElementById('pr-disc-type').value;
+  const val=parseFloat(document.getElementById('pr-value').value)||0;
+  if(discType!=='free_shipping'&&!val){alert('Nilai diskon wajib diisi');return;}
+  const payload={
+    type,code:type==='code'?code:null,name,
+    description:document.getElementById('pr-desc').value.trim()||null,
+    discount_type:discType,
+    discount_value:discType==='free_shipping'?0:val,
+    min_purchase:parseInt(document.getElementById('pr-min').value)||null,
+    applies_to:document.getElementById('pr-applies').value,
+    expires_at:document.getElementById('pr-expires').value?new Date(document.getElementById('pr-expires').value).toISOString():null,
+    is_active:document.getElementById('pr-active-tgl').classList.contains('on')
+  };
+  if(curPromo)payload.id=curPromo;
+  const{data,error}=await sb.from('promos').upsert(payload).select().single();
+  if(error){alert('Gagal simpan: '+error.message);return;}
+  if(curPromo){const i=promos.findIndex(x=>x.id===curPromo);if(i>-1)promos[i]=data;}else promos.unshift(data);
+  cSh();rPromoList();
+}
+
+async function togglePromoActive(id){const pr=promos.find(x=>x.id===id);if(!pr)return;pr.is_active=!pr.is_active;await sb.from('promos').update({is_active:pr.is_active}).eq('id',id);rPromoList();}
+
+async function deletePromo(){
+  if(!curPromo)return;
+  if(!confirm('Hapus promo ini?'))return;
+  await sb.from('promos').delete().eq('id',curPromo);
+  promos=promos.filter(x=>x.id!==curPromo);
+  cSh();rPromoList();
+}
 function openNotif(){const al=[];prods.filter(p=>!p.archived&&tS(p)===0).forEach(p=>al.push(`⛔ Stok habis: ${p.name}`));prods.filter(p=>!p.archived&&tS(p)>0&&tS(p)<=p.minStock).forEach(p=>al.push(`⚠️ Hampir habis: ${p.name} (${tS(p)} pcs)`));custs.filter(c=>iBT(c.petBday)||iBS(c.petBday)).forEach(c=>al.push(`🎂 Ulang tahun anabul: ${c.name} — ${c.pet}`));const up=invs.filter(i=>i.status==='unpaid');if(up.length)al.push(`💰 ${up.length} invoice belum lunas (${fK(up.reduce((s,i)=>s+i.total,0))})`);const po=orders.filter(o=>o.orderStatus==='pending');if(po.length)al.push(`📦 ${po.length} pesanan baru menunggu diproses`);document.getElementById('notif-c').innerHTML=al.length?al.map(a=>`<div style="padding:10px 0;border-bottom:.5px solid var(--b);font-size:13px">${a}</div>`).join(''):'<div style="text-align:center;padding:1rem;font-size:13px;color:var(--t3)">Tidak ada notifikasi</div>';oSh('sh-notif');}
 
 async function init(){
