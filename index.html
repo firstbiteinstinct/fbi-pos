@@ -272,6 +272,53 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
   </div>
 </div>
 
+<!-- ORDER LIST -->
+<div class="screen" id="sc-orders">
+  <div class="topbar" style="position:sticky;top:0;z-index:8">
+    <button class="bsm" onclick="sTab('pos')">← Kembali</button>
+    <span style="flex:1;font-size:15px;font-weight:500;margin-left:8px">Order Masuk</span>
+  </div>
+  <div class="cr" id="ord-flt"></div>
+  <div style="padding:0 1rem 16px" id="order-list"></div>
+</div>
+
+<!-- ORDER DETAIL -->
+<div class="screen" id="sc-order-d">
+  <div class="topbar" style="position:sticky;top:0;z-index:8">
+    <button class="bsm" onclick="gS('sc-orders')">← Kembali</button>
+    <span id="ord-no-t" style="flex:1;font-size:13px;font-weight:500;margin-left:8px;font-family:monospace"></span>
+  </div>
+  <div style="padding:1rem">
+    <div class="card" style="margin-bottom:12px">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr><td style="color:var(--t3);padding:3px 0;width:40%">Customer</td><td id="od-cust" style="font-weight:500"></td></tr>
+        <tr><td style="color:var(--t3);padding:3px 0">WA</td><td id="od-phone"></td></tr>
+        <tr><td style="color:var(--t3);padding:3px 0">Alamat</td><td id="od-addr"></td></tr>
+        <tr><td style="color:var(--t3);padding:3px 0">Kurir</td><td id="od-courier"></td></tr>
+        <tr><td style="color:var(--t3);padding:3px 0">Catatan</td><td id="od-notes"></td></tr>
+        <tr><td style="color:var(--t3);padding:3px 0">Status</td><td id="od-status"></td></tr>
+      </table>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="stt" style="padding:0 0 6px">Bukti transfer</div>
+      <div id="od-proof"></div>
+      <div id="od-verify-row" style="margin-top:10px;display:none">
+        <button class="btn bo" onclick="markPaymentVerified()">✓ Tandai pembayaran terverifikasi</button>
+      </div>
+    </div>
+    <div class="stt" style="padding:0 0 6px">Checklist packing</div>
+    <div class="card" style="margin-bottom:12px"><div id="od-items"></div></div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span style="color:var(--t3)">Subtotal</span><span id="od-sub"></span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span style="color:var(--t3)">Ongkos kirim</span><span id="od-ship"></span></div>
+      <div id="od-dcr" style="display:none;justify-content:space-between;padding:4px 0;font-size:13px"><span style="color:var(--t3)">Diskon</span><span id="od-dc" style="color:var(--ok)"></span></div>
+      <hr class="div">
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:500"><span>Total</span><span id="od-tot"></span></div>
+    </div>
+    <button class="btn bw" id="btn-mark-packed" onclick="markPacked()" disabled>✓ Tandai sudah packing & kirim WA</button>
+  </div>
+</div>
+
 <!-- INVENTORY -->
 <div class="screen" id="sc-inv">
   <div style="padding:8px 1rem 4px"><input type="text" id="inv-q" placeholder="🔍 Cari produk..." style="font-size:13px" oninput="rInvStock()"/></div>
@@ -460,6 +507,7 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
 
 <div class="bnav">
   <button class="ni active" id="ni-pos" onclick="sTab('pos')"><span class="ni-icon">🛒</span><span class="ni-lbl">POS</span><span class="ni-dot"></span></button>
+  <button class="ni" id="ni-orders" onclick="sTab('orders')"><span class="ni-icon">📋</span><span class="ni-lbl">Order</span><span class="ni-dot"></span></button>
   <button class="ni" id="ni-inventory" onclick="sTab('inventory')"><span class="ni-icon">📦</span><span class="ni-lbl">Inventori</span><span class="ni-dot"></span></button>
   <button class="ni" id="ni-customers" onclick="sTab('customers')"><span class="ni-icon">👥</span><span class="ni-lbl">Customer</span><span class="ni-dot"></span></button>
   <button class="ni" id="ni-finance" onclick="sTab('finance')"><span class="ni-icon">📊</span><span class="ni-lbl">Finance</span><span class="ni-dot"></span></button>
@@ -572,7 +620,8 @@ function iBS(d,dy=7){if(!d)return false;const t=new Date(),b=new Date(d);b.setFu
 function bH(c){if(!c||!c.petBday)return null;const bd=new Date(c.petBday);if(iBT(c.petBday))return`🎂 Hari ini ulang tahun <b>${c.pet||'anabul'}</b>-nya ${c.name}!`;if(iBS(c.petBday))return`🎂 Ulang tahun <b>${c.pet||'anabul'}</b>-nya ${c.name} dekat! (${bd.getDate()} ${MO[bd.getMonth()]})`;return null;}
 function cSt(mv){let r=0,c=0,gv=0,sq=0,gq=0;mv.forEach(m=>{const p=gP(m.productId),b=gB(m.productId,m.batchId);if(!p||!b)return;if(m.type==='sale'){r+=p.price*m.qty;c+=b.hpp*m.qty;sq+=m.qty;}if(m.type==='gift'){gv+=p.price*m.qty;gq+=m.qty;}});return{revenue:r,cogs:c,giftVal:gv,grossProfit:r-c,margin:r?((r-c)/r*100):0,saleQty:sq,giftQty:gq};}
 
-let prods=[],custs=[],invs=[],movs=[];
+let prods=[],custs=[],invs=[],movs=[],orders=[];
+let ordFlt='all',curOrder=null;
 let cats=[{id:'cooked-food',name:'Cooked food'},{id:'herbs',name:'Herbs'},{id:'dehydrated',name:'Dehydrated'},{id:'chew',name:'Chew'},{id:'broth',name:'Broth'}];
 let cfg={name:'First Bite Instinct (FBI)',phone:'+62 851-1783-8911',city:'Bandung, Jawa Barat',minStock:10};
 let cart=[],selPay_='transfer',lastInv=null,invFlt='all';
@@ -595,15 +644,18 @@ async function dbLoad(){
     sb.from('invoices').select('*').order('created_at',{ascending:false}),
     sb.from('invoice_items').select('*'),
     sb.from('movements').select('*').order('created_at',{ascending:false}),
-    sb.from('settings').select('*').limit(1)
+    sb.from('settings').select('*').limit(1),
+    sb.from('orders').select('*').order('created_at',{ascending:false}),
+    sb.from('order_items').select('*')
   ]);
   results.forEach((r,i)=>{if(r.error)console.error('DB error',i,r.error);});
-  const[{data:ps},{data:bs},{data:cs},{data:is},{data:its},{data:ms},{data:ss}]=results;
+  const[{data:ps},{data:bs},{data:cs},{data:is},{data:its},{data:ms},{data:ss},{data:os},{data:ois}]=results;
   prods=(ps||[]).filter(p=>p.min_stock!==-1).map(p=>({id:p.id,name:p.name,description:p.description||'',category:p.category,price:p.price,minStock:p.min_stock,image_url:p.image_url||null,weight_gram:p.weight_gram||0,batches:(bs||[]).filter(b=>b.product_id===p.id).map(b=>({id:b.id,code:b.code,stock:b.stock,active:b.active,date:b.date,exp:b.exp,hpp:b.hpp||0}))}));
   custs=(cs||[]).map(c=>({id:c.id,name:c.name,phone:c.phone,address:c.address,pet:c.pet,breed:c.breed,petBday:c.pet_bday,notes:c.notes}));
   invs=(is||[]).map(inv=>({id:inv.id,no:inv.no,customer:inv.customer,date:inv.date,subtotal:inv.subtotal,discount:inv.discount,shipping:inv.shipping,total:inv.total,payment:inv.payment,status:inv.status,note:inv.note,voidReason:inv.void_reason,items:(its||[]).filter(i=>i.invoice_id===inv.id).map(i=>({productId:i.product_id,productName:i.product_name,batchId:i.batch_id,batchCode:i.batch_code,qty:i.qty,price:i.price,hpp:i.hpp}))}));
   movs=(ms||[]).map(m=>({id:m.id,type:m.type,productId:m.product_id,batchId:m.batch_id,qty:m.qty,date:m.date,note:m.note,recipient:m.recipient}));
   if(ss&&ss[0]){const s=ss[0];cfg={name:s.store_name,phone:s.phone,city:s.city,minStock:s.min_stock};if(s.categories){try{const lc=JSON.parse(s.categories);if(lc&&lc.length)cats=lc;}catch(e){}}}
+  orders=(os||[]).map(o=>({id:o.id,no:o.order_no,customerName:o.customer_name,customerPhone:o.customer_phone,shippingName:o.shipping_name,shippingPhone:o.shipping_phone,shippingAddress:o.shipping_address,shippingCity:o.shipping_city,courier:o.courier,courierService:o.courier_service,shippingCost:o.shipping_cost||0,subtotal:o.subtotal||0,discountAmount:o.discount_amount||0,shippingDiscount:o.shipping_discount||0,total:o.total||0,paymentStatus:o.payment_status,paymentProofUrl:o.payment_proof_url,paymentVerified:o.payment_verified,orderStatus:o.order_status,notes:o.notes,createdAt:o.created_at,items:(ois||[]).filter(i=>i.order_id===o.id).map(i=>({id:i.id,productId:i.product_id,productName:i.product_name,variant:i.variant,qty:i.qty,price:i.price,packed:!!i.packed}))}));
 }
 
 async function dbUB(bid,stock,active){sync();const u={stock};if(active!==undefined)u.active=active;await sb.from('batches').update(u).eq('id',bid);}
@@ -614,6 +666,8 @@ async function dbSI(inv){sync();await sb.from('invoices').upsert({id:inv.id,no:i
 async function dbUI(id,status,vr){sync();await sb.from('invoices').update({status,void_reason:vr||''}).eq('id',id);}
 async function dbSM(m){sync();await sb.from('movements').insert({id:m.id,type:m.type,product_id:m.productId,batch_id:m.batchId,qty:m.qty,date:m.date,note:m.note,recipient:m.recipient});}
 async function dbSS(){sync();await sb.from('settings').upsert({id:1,store_name:cfg.name,phone:cfg.phone,city:cfg.city,min_stock:cfg.minStock,categories:JSON.stringify(cats)});}
+async function dbUOI(itemId,packed){sync();await sb.from('order_items').update({packed}).eq('id',itemId);}
+async function dbUO(id,fields){sync();await sb.from('orders').update(fields).eq('id',id);}
 
 async function uploadProductImg(file,pid){
   if(!file)return null;
@@ -639,8 +693,8 @@ function prevImg(input,imgId,phId){
   reader.readAsDataURL(file);
 }
 
-function gS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');cSh();if(id==='sc-cart')rCart();if(id==='sc-co')rCO();if(id==='sc-invs'){invFlt='all';rIL();}}
-function sTab(t){aTab=t;['pos','inventory','customers','finance','settings'].forEach(x=>document.getElementById('ni-'+x).classList.toggle('active',x===t));const m={pos:'sc-pos',inventory:'sc-inv',customers:'sc-custs',finance:'sc-fin',settings:'sc-settings'};gS(m[t]);if(t==='pos'){rCats();rG();}if(t==='inventory'){rITabs();rInvStock();}if(t==='customers'){rCFlt();rCL();}if(t==='finance'){rFTabs();rFOv();}if(t==='settings')rSF();}
+function gS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');cSh();if(id==='sc-cart')rCart();if(id==='sc-co')rCO();if(id==='sc-invs'){invFlt='all';rIL();}if(id==='sc-orders'){ordFlt='all';rOL();}}
+function sTab(t){aTab=t;['pos','orders','inventory','customers','finance','settings'].forEach(x=>document.getElementById('ni-'+x).classList.toggle('active',x===t));const m={pos:'sc-pos',orders:'sc-orders',inventory:'sc-inv',customers:'sc-custs',finance:'sc-fin',settings:'sc-settings'};gS(m[t]);if(t==='pos'){rCats();rG();}if(t==='orders')rOL();if(t==='inventory'){rITabs();rInvStock();}if(t==='customers'){rCFlt();rCL();}if(t==='finance'){rFTabs();rFOv();}if(t==='settings')rSF();}
 function oSh(id){document.getElementById(id).classList.add('open');document.getElementById('ov').classList.add('open');}
 function cSh(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));document.getElementById('ov').classList.remove('open');}
 
@@ -740,6 +794,38 @@ function viewLast(){rID(lastInv);gS('sc-inv-d');}
 
 function rIL(f){if(f)invFlt=f;const c=['all','paid','unpaid','void'];const l={all:'Semua',paid:'Lunas',unpaid:'Belum lunas',void:'Void'};document.getElementById('inv-flt').innerHTML=c.map(x=>`<button class="chip ${invFlt===x?'active':''}" onclick="rIL('${x}')">${l[x]}</button>`).join('');const fl=invFlt==='all'?invs:invs.filter(i=>i.status===invFlt);const el=document.getElementById('inv-list');if(!fl.length){el.innerHTML='<div style="text-align:center;padding:2rem;font-size:13px;color:var(--t3)">Belum ada invoice</div>';return;}el.innerHTML=fl.map(inv=>`<div class="csm" onclick="rID('${inv.id}');gS('sc-inv-d')" style="cursor:pointer;${inv.status==='void'?'opacity:.6':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;font-weight:500;font-family:monospace;color:var(--info)">${inv.no}</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${inv.customer}</div><div style="font-size:11px;color:var(--t3)">${inv.date} · ${PL[inv.payment]||inv.payment}</div></div><div style="text-align:right"><div style="font-size:14px;font-weight:500">${fR(inv.total)}</div><span class="badge ${inv.status==='paid'?'bpaid':inv.status==='void'?'bvoid':'bunpaid'}">${inv.status==='paid'?'Lunas':inv.status==='void'?'Void':'Belum lunas'}</span></div></div></div>`).join('');}
 function rID(id){const inv=invs.find(x=>x.id===id);if(!inv)return;lastInv=id;document.getElementById('inv-no-t').textContent=inv.no;document.getElementById('d-cust').textContent=inv.customer;document.getElementById('d-date').textContent=inv.date;document.getElementById('d-pay').textContent=PL[inv.payment]||inv.payment;document.getElementById('d-stat').innerHTML=`<span class="badge ${inv.status==='paid'?'bpaid':inv.status==='void'?'bvoid':'bunpaid'}">${inv.status==='paid'?'Lunas':inv.status==='void'?'VOID':'Belum lunas'}</span>`;document.getElementById('vb').style.display=inv.status==='void'?'':'none';document.getElementById('d-items').innerHTML=inv.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--b)"><div><div style="font-size:13px;font-weight:500">${it.productName}</div><div style="font-size:11px;color:var(--t3);font-family:monospace">${it.batchCode}</div><div style="font-size:11px;color:var(--t3)">${fR(it.price)} × ${it.qty}</div></div><div style="font-size:13px;font-weight:500">${fR(it.price*it.qty)}</div></div>`).join('');document.getElementById('d-sub').textContent=fR(inv.subtotal);document.getElementById('d-tot').textContent=fR(inv.total);const dsr=document.getElementById('d-shr'),ddr=document.getElementById('d-dcr');if(inv.shipping>0){dsr.style.display='flex';document.getElementById('d-sh').textContent=fR(inv.shipping);}else dsr.style.display='none';if(inv.discount>0){ddr.style.display='flex';document.getElementById('d-dc').textContent='-'+fR(inv.discount);}else ddr.style.display='none';const ns=document.getElementById('d-ns');if(inv.note){ns.style.display='';document.getElementById('d-note').textContent=inv.note;}else ns.style.display='none';}
+
+// ORDERS
+const OSL={pending:'Pending',packed:'Sudah Packing'};
+function rOL(f){if(f)ordFlt=f;const c=['all','pending','packed'];const l={all:'Semua',pending:'Pending',packed:'Sudah Packing'};document.getElementById('ord-flt').innerHTML=c.map(x=>`<button class="chip ${ordFlt===x?'active':''}" onclick="rOL('${x}')">${l[x]}</button>`).join('');const fl=ordFlt==='all'?orders:orders.filter(o=>o.orderStatus===ordFlt);const el=document.getElementById('order-list');if(!fl.length){el.innerHTML='<div style="text-align:center;padding:2rem;font-size:13px;color:var(--t3)">Belum ada order</div>';return;}el.innerHTML=fl.map(o=>`<div class="csm" onclick="rOD('${o.id}');gS('sc-order-d')" style="cursor:pointer"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;font-weight:500;font-family:monospace;color:var(--info)">${o.no}</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${o.customerName}</div><div style="font-size:11px;color:var(--t3)">${(o.createdAt||'').slice(0,10)} · ${o.items.length} item</div></div><div style="text-align:right"><div style="font-size:14px;font-weight:500">${fR(o.total)}</div><span class="badge ${o.orderStatus==='packed'?'bpaid':'bunpaid'}">${OSL[o.orderStatus]||o.orderStatus}</span></div></div></div>`).join('');}
+function rOD(id){const o=orders.find(x=>x.id===id);if(!o)return;curOrder=id;document.getElementById('ord-no-t').textContent=o.no;document.getElementById('od-cust').textContent=o.shippingName||o.customerName;document.getElementById('od-phone').textContent=o.shippingPhone||o.customerPhone;document.getElementById('od-addr').textContent=[o.shippingAddress,o.shippingCity].filter(Boolean).join(', ');document.getElementById('od-courier').textContent=[o.courier,o.courierService].filter(Boolean).join(' ')||'-';document.getElementById('od-notes').textContent=o.notes||'-';document.getElementById('od-status').innerHTML=`<span class="badge ${o.orderStatus==='packed'?'bpaid':'bunpaid'}">${OSL[o.orderStatus]||o.orderStatus}</span> <span class="badge ${o.paymentVerified?'bpaid':'bunpaid'}">${o.paymentVerified?'Pembayaran terverifikasi':'Pembayaran belum diverifikasi'}</span>`;
+  const proofEl=document.getElementById('od-proof');
+  proofEl.innerHTML=o.paymentProofUrl?`<img src="${o.paymentProofUrl}" style="max-width:100%;border-radius:var(--r)" onclick="window.open('${o.paymentProofUrl}','_blank')"/>`:'<div style="font-size:12px;color:var(--t3)">Belum ada bukti transfer</div>';
+  document.getElementById('od-verify-row').style.display=o.paymentVerified?'none':'';
+  document.getElementById('od-items').innerHTML=o.items.map(it=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--b);cursor:pointer"><input type="checkbox" ${it.packed?'checked':''} onchange="toggleItemPacked('${it.id}',this.checked)" style="width:18px;height:18px;flex-shrink:0"/><div style="flex:1"><div style="font-size:13px;font-weight:500">${it.productName}${it.variant?' ('+it.variant+')':''}</div><div style="font-size:11px;color:var(--t3)">${fR(it.price)} × ${it.qty}</div></div><div style="font-size:13px;font-weight:500">${fR(it.price*it.qty)}</div></label>`).join('');
+  document.getElementById('od-sub').textContent=fR(o.subtotal);
+  document.getElementById('od-ship').textContent=fR(o.shippingCost-(o.shippingDiscount||0));
+  const dcr=document.getElementById('od-dcr');const disc=(o.discountAmount||0);if(disc>0){dcr.style.display='flex';document.getElementById('od-dc').textContent='-'+fR(disc);}else dcr.style.display='none';
+  document.getElementById('od-tot').textContent=fR(o.total);
+  const btn=document.getElementById('btn-mark-packed');
+  if(o.orderStatus==='packed'){btn.disabled=true;btn.textContent='✓ Sudah dipacking';}
+  else{btn.disabled=!o.items.length||!o.items.every(it=>it.packed);btn.textContent='✓ Tandai sudah packing & kirim WA';}
+}
+async function toggleItemPacked(itemId,packed){const o=orders.find(x=>x.id===curOrder);if(!o)return;const it=o.items.find(x=>x.id===itemId);if(it)it.packed=packed;await dbUOI(itemId,packed);rOD(curOrder);}
+async function markPaymentVerified(){const o=orders.find(x=>x.id===curOrder);if(!o)return;o.paymentVerified=true;await dbUO(o.id,{payment_verified:true});rOD(curOrder);}
+async function markPacked(){
+  const o=orders.find(x=>x.id===curOrder);if(!o)return;
+  if(!o.items.length||!o.items.every(it=>it.packed)){alert('Centang semua item dulu sebelum menandai packing selesai');return;}
+  const btn=document.getElementById('btn-mark-packed');btn.disabled=true;btn.textContent='Memproses...';
+  o.orderStatus='packed';
+  await dbUO(o.id,{order_status:'packed',packed_at:new Date().toISOString()});
+  const phone=(o.shippingPhone||o.customerPhone||'').replace(/^0/,'62');
+  if(phone){
+    const msg=`Halo *${o.shippingName||o.customerName}*! 🐾\n\nPesananmu di *First Bite Instinct* sudah kami packing dan siap dikirim!\n\n📦 *${o.no}*\n\nTerima kasih sudah belanja di FBI ya! 🎉\n\n_First Bite Instinct — Natural & Nutrition Balance_`;
+    await sb.functions.invoke('proxy',{body:{service:'fonnte-send',target:phone,message:msg}}).catch(()=>{});
+  }
+  rOD(curOrder);rOL();
+}
 function openIA(){const inv=invs.find(x=>x.id===lastInv);if(!inv)return;const iv=inv.status==='void';document.getElementById('act-c').innerHTML=`${!iv?`<div style="padding:12px 0;border-bottom:.5px solid var(--b);cursor:pointer;font-size:14px" onclick="cSh();openEI()">✏️ Edit invoice</div>`:''}${inv.status==='unpaid'&&!iv?`<div style="padding:12px 0;border-bottom:.5px solid var(--b);cursor:pointer;font-size:14px;color:var(--ok)" onclick="cSh();qPaid()">✓ Tandai lunas</div>`:''}
 <div style="padding:12px 0;border-bottom:.5px solid var(--b);cursor:pointer;font-size:14px" onclick="cSh();shareWA()">📱 Kirim ke WhatsApp</div>
 <div style="padding:12px 0;border-bottom:.5px solid var(--b);cursor:pointer;font-size:14px" onclick="cSh();dlInvPDF()">⬇ Download PDF</div>
@@ -822,7 +908,7 @@ function renderCatSheet(){document.getElementById('cat-sh-list').innerHTML=cats.
 function deleteCat(i){if(cats.length<=1){alert('Minimal 1 kategori');return;}const inputs=document.querySelectorAll('[id^="cat-inp-"]');inputs.forEach((inp,j)=>{if(cats[j])cats[j].name=inp.value||cats[j].name;});cats.splice(i,1);renderCatSheet();}
 function addCatRow(){const inputs=document.querySelectorAll('[id^="cat-inp-"]');inputs.forEach((inp,i)=>{if(cats[i])cats[i].name=inp.value||cats[i].name;});cats.push({id:'cat-'+Date.now(),name:'Kategori Baru'});renderCatSheet();setTimeout(()=>{const all=document.querySelectorAll('[id^="cat-inp-"]');if(all.length)all[all.length-1].focus();},50);}
 async function saveCats(){const inputs=document.querySelectorAll('[id^="cat-inp-"]');const newCats=[];inputs.forEach((inp,i)=>{const name=inp.value.trim();if(!name)return;const ex=cats[i];newCats.push({id:ex?ex.id:'cat-'+Date.now()+i,name});});if(!newCats.length){alert('Minimal 1 kategori');return;}cats=newCats;rCats();rSF();cSh();dbSS();}
-function openNotif(){const al=[];prods.filter(p=>!p.archived&&tS(p)===0).forEach(p=>al.push(`⛔ Stok habis: ${p.name}`));prods.filter(p=>!p.archived&&tS(p)>0&&tS(p)<=p.minStock).forEach(p=>al.push(`⚠️ Hampir habis: ${p.name} (${tS(p)} pcs)`));custs.filter(c=>iBT(c.petBday)||iBS(c.petBday)).forEach(c=>al.push(`🎂 Ulang tahun anabul: ${c.name} — ${c.pet}`));const up=invs.filter(i=>i.status==='unpaid');if(up.length)al.push(`💰 ${up.length} invoice belum lunas (${fK(up.reduce((s,i)=>s+i.total,0))})`);document.getElementById('notif-c').innerHTML=al.length?al.map(a=>`<div style="padding:10px 0;border-bottom:.5px solid var(--b);font-size:13px">${a}</div>`).join(''):'<div style="text-align:center;padding:1rem;font-size:13px;color:var(--t3)">Tidak ada notifikasi</div>';oSh('sh-notif');}
+function openNotif(){const al=[];prods.filter(p=>!p.archived&&tS(p)===0).forEach(p=>al.push(`⛔ Stok habis: ${p.name}`));prods.filter(p=>!p.archived&&tS(p)>0&&tS(p)<=p.minStock).forEach(p=>al.push(`⚠️ Hampir habis: ${p.name} (${tS(p)} pcs)`));custs.filter(c=>iBT(c.petBday)||iBS(c.petBday)).forEach(c=>al.push(`🎂 Ulang tahun anabul: ${c.name} — ${c.pet}`));const up=invs.filter(i=>i.status==='unpaid');if(up.length)al.push(`💰 ${up.length} invoice belum lunas (${fK(up.reduce((s,i)=>s+i.total,0))})`);const po=orders.filter(o=>o.orderStatus==='pending');if(po.length)al.push(`📦 ${po.length} pesanan baru menunggu diproses`);document.getElementById('notif-c').innerHTML=al.length?al.map(a=>`<div style="padding:10px 0;border-bottom:.5px solid var(--b);font-size:13px">${a}</div>`).join(''):'<div style="text-align:center;padding:1rem;font-size:13px;color:var(--t3)">Tidak ada notifikasi</div>';oSh('sh-notif');}
 
 async function init(){
   try{
