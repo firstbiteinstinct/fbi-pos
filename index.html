@@ -853,7 +853,17 @@ function rOD(id){const o=orders.find(x=>x.id===id);if(!o)return;curOrder=id;docu
   else{btn.disabled=!o.items.length||!o.items.every(it=>it.packed);btn.textContent='✓ Tandai sudah packing & kirim WA';}
 }
 async function toggleItemPacked(itemId,packed){const o=orders.find(x=>x.id===curOrder);if(!o)return;const it=o.items.find(x=>x.id===itemId);if(it)it.packed=packed;await dbUOI(itemId,packed);rOD(curOrder);}
-async function markPaymentVerified(){const o=orders.find(x=>x.id===curOrder);if(!o)return;o.paymentVerified=true;await dbUO(o.id,{payment_verified:true});rOD(curOrder);}
+async function markPaymentVerified(){
+  const o=orders.find(x=>x.id===curOrder);if(!o)return;
+  o.paymentVerified=true;
+  await dbUO(o.id,{payment_verified:true});
+  const phone=(o.shippingPhone||o.customerPhone||'').replace(/^0/,'62');
+  if(phone){
+    const msg=`✅ Pembayaranmu untuk pesanan *${o.no}* sudah kami terima dan sesuai!\n\nPesananmu akan segera diproses. Kami akan kirim notifikasi lagi saat pesanan dipacking ya! 📦\n\n_First Bite Instinct — Natural & Nutrition Balance_`;
+    await sb.functions.invoke('proxy',{body:{service:'fonnte-send',target:phone,message:msg}}).catch(()=>{});
+  }
+  rOD(curOrder);
+}
 async function markPacked(){
   const o=orders.find(x=>x.id===curOrder);if(!o)return;
   if(!o.items.length||!o.items.every(it=>it.packed)){alert('Centang semua item dulu sebelum menandai packing selesai');return;}
