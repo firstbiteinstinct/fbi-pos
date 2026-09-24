@@ -299,6 +299,12 @@ input::placeholder,textarea::placeholder{color:var(--t3)}
         <tr><td style="color:var(--t3);padding:3px 0">Status</td><td id="od-status"></td></tr>
       </table>
     </div>
+    <div class="card" id="od-ship-confirm" style="margin-bottom:12px;display:none">
+      <div class="stt" style="padding:0 0 6px">⏳ Ongkir Paxel belum dikonfirmasi</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:10px">Cek ongkir Paxel manual, lalu masukkan nominalnya. Customer akan otomatis dapat WA berisi total ongkir yang perlu ditransfer.</div>
+      <div class="fg" style="margin-bottom:8px"><input type="number" id="od-ship-input" placeholder="Nominal ongkir (Rp)"/></div>
+      <button class="btn bw" onclick="confirmShippingCost()">✓ Konfirmasi ongkir & kirim WA</button>
+    </div>
     <div class="card" style="margin-bottom:12px">
       <div class="stt" style="padding:0 0 6px">Bukti transfer</div>
       <div id="od-proof"></div>
@@ -710,7 +716,7 @@ async function dbLoad(){
   invs=(is||[]).map(inv=>({id:inv.id,no:inv.no,customer:inv.customer,date:inv.date,subtotal:inv.subtotal,discount:inv.discount,shipping:inv.shipping,total:inv.total,payment:inv.payment,status:inv.status,note:inv.note,voidReason:inv.void_reason,items:(its||[]).filter(i=>i.invoice_id===inv.id).map(i=>({productId:i.product_id,productName:i.product_name,batchId:i.batch_id,batchCode:i.batch_code,qty:i.qty,price:i.price,hpp:i.hpp}))}));
   movs=(ms||[]).map(m=>({id:m.id,type:m.type,productId:m.product_id,batchId:m.batch_id,qty:m.qty,date:m.date,note:m.note,recipient:m.recipient}));
   if(ss&&ss[0]){const s=ss[0];cfg={name:s.store_name,phone:s.phone,city:s.city,minStock:s.min_stock};if(s.categories){try{const lc=JSON.parse(s.categories);if(lc&&lc.length)cats=lc;}catch(e){}}}
-  orders=(os||[]).map(o=>({id:o.id,no:o.order_no,customerName:o.customer_name,customerPhone:o.customer_phone,shippingName:o.shipping_name,shippingPhone:o.shipping_phone,shippingAddress:o.shipping_address,shippingCity:o.shipping_city,courier:o.courier,courierService:o.courier_service,shippingCost:o.shipping_cost||0,subtotal:o.subtotal||0,discountAmount:o.discount_amount||0,shippingDiscount:o.shipping_discount||0,total:o.total||0,paymentStatus:o.payment_status,paymentProofUrl:o.payment_proof_url,paymentVerified:o.payment_verified,orderStatus:o.order_status,notes:o.notes,createdAt:o.created_at,items:(ois||[]).filter(i=>i.order_id===o.id).map(i=>({id:i.id,productId:i.product_id,productName:i.product_name,variant:i.variant,qty:i.qty,price:i.price,packed:!!i.packed}))}));
+  orders=(os||[]).map(o=>({id:o.id,no:o.order_no,customerName:o.customer_name,customerPhone:o.customer_phone,shippingName:o.shipping_name,shippingPhone:o.shipping_phone,shippingAddress:o.shipping_address,shippingCity:o.shipping_city,courier:o.courier,courierService:o.courier_service,shippingCost:o.shipping_cost||0,subtotal:o.subtotal||0,discountAmount:o.discount_amount||0,shippingDiscount:o.shipping_discount||0,total:o.total||0,paymentStatus:o.payment_status,paymentProofUrl:o.payment_proof_url,paymentVerified:o.payment_verified,orderStatus:o.order_status,shippingCostConfirmed:o.shipping_cost_confirmed!==false,notes:o.notes,createdAt:o.created_at,items:(ois||[]).filter(i=>i.order_id===o.id).map(i=>({id:i.id,productId:i.product_id,productName:i.product_name,variant:i.variant,qty:i.qty,price:i.price,packed:!!i.packed}))}));
   promos=prs||[];
 }
 
@@ -723,7 +729,7 @@ async function dbUI(id,status,vr){sync();await sb.from('invoices').update({statu
 async function dbSM(m){sync();await sb.from('movements').insert({id:m.id,type:m.type,product_id:m.productId,batch_id:m.batchId,qty:m.qty,date:m.date,note:m.note,recipient:m.recipient});}
 async function dbSS(){sync();await sb.from('settings').upsert({id:1,store_name:cfg.name,phone:cfg.phone,city:cfg.city,min_stock:cfg.minStock,categories:JSON.stringify(cats)});}
 async function dbUOI(itemId,packed){sync();await sb.from('order_items').update({packed}).eq('id',itemId);}
-async function dbUO(id,fields){sync();await sb.from('orders').update(fields).eq('id',id);}
+async function dbUO(id,fields){sync();const{error}=await sb.from('orders').update(fields).eq('id',id);if(error){console.error('dbUO error',error);alert('Gagal update order: '+error.message);}return!error;}
 
 async function uploadProductImg(file,pid){
   if(!file)return null;
@@ -853,8 +859,10 @@ function rID(id){const inv=invs.find(x=>x.id===id);if(!inv)return;lastInv=id;doc
 
 // ORDERS
 const OSL={pending:'Pending',packed:'Sudah Packing'};
-function rOL(f){if(f)ordFlt=f;const c=['all','pending','packed'];const l={all:'Semua',pending:'Pending',packed:'Sudah Packing'};document.getElementById('ord-flt').innerHTML=c.map(x=>`<button class="chip ${ordFlt===x?'active':''}" onclick="rOL('${x}')">${l[x]}</button>`).join('');const fl=ordFlt==='all'?orders:orders.filter(o=>o.orderStatus===ordFlt);const el=document.getElementById('order-list');if(!fl.length){el.innerHTML='<div style="text-align:center;padding:2rem;font-size:13px;color:var(--t3)">Belum ada order</div>';return;}el.innerHTML=fl.map(o=>`<div class="csm" onclick="rOD('${o.id}');gS('sc-order-d')" style="cursor:pointer"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;font-weight:500;font-family:monospace;color:var(--info)">${o.no}</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${o.customerName}</div><div style="font-size:11px;color:var(--t3)">${(o.createdAt||'').slice(0,10)} · ${o.items.length} item</div></div><div style="text-align:right"><div style="font-size:14px;font-weight:500">${fR(o.total)}</div><span class="badge ${o.orderStatus==='packed'?'bpaid':'bunpaid'}">${OSL[o.orderStatus]||o.orderStatus}</span></div></div></div>`).join('');}
-function rOD(id){const o=orders.find(x=>x.id===id);if(!o)return;curOrder=id;document.getElementById('ord-no-t').textContent=o.no;document.getElementById('od-cust').textContent=o.shippingName||o.customerName;document.getElementById('od-phone').textContent=o.shippingPhone||o.customerPhone;document.getElementById('od-addr').textContent=[o.shippingAddress,o.shippingCity].filter(Boolean).join(', ');document.getElementById('od-courier').textContent=[o.courier,o.courierService].filter(Boolean).join(' ')||'-';document.getElementById('od-notes').textContent=o.notes||'-';document.getElementById('od-status').innerHTML=`<span class="badge ${o.orderStatus==='packed'?'bpaid':'bunpaid'}">${OSL[o.orderStatus]||o.orderStatus}</span> <span class="badge ${o.paymentVerified?'bpaid':'bunpaid'}">${o.paymentVerified?'Pembayaran terverifikasi':'Pembayaran belum diverifikasi'}</span>`;
+function rOL(f){if(f)ordFlt=f;const c=['all','pending','packed'];const l={all:'Semua',pending:'Pending',packed:'Sudah Packing'};document.getElementById('ord-flt').innerHTML=c.map(x=>`<button class="chip ${ordFlt===x?'active':''}" onclick="rOL('${x}')">${l[x]}</button>`).join('');const fl=ordFlt==='all'?orders:orders.filter(o=>o.orderStatus===ordFlt);const el=document.getElementById('order-list');if(!fl.length){el.innerHTML='<div style="text-align:center;padding:2rem;font-size:13px;color:var(--t3)">Belum ada order</div>';return;}el.innerHTML=fl.map(o=>`<div class="csm" onclick="rOD('${o.id}');gS('sc-order-d')" style="cursor:pointer"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;font-weight:500;font-family:monospace;color:var(--info)">${o.no}</div><div style="font-size:13px;color:var(--t2);margin-top:2px">${o.customerName}</div><div style="font-size:11px;color:var(--t3)">${(o.createdAt||'').slice(0,10)} · ${o.items.length} item</div></div><div style="text-align:right"><div style="font-size:14px;font-weight:500">${fR(o.total)}</div><span class="badge ${o.orderStatus==='packed'?'bpaid':'bunpaid'}">${OSL[o.orderStatus]||o.orderStatus}</span>${!o.shippingCostConfirmed?'<br><span class="badge blow" style="margin-top:3px">⏳ Ongkir</span>':''}</div></div></div>`).join('');}
+function rOD(id){const o=orders.find(x=>x.id===id);if(!o)return;curOrder=id;document.getElementById('ord-no-t').textContent=o.no;document.getElementById('od-cust').textContent=o.shippingName||o.customerName;document.getElementById('od-phone').textContent=o.shippingPhone||o.customerPhone;document.getElementById('od-addr').textContent=[o.shippingAddress,o.shippingCity].filter(Boolean).join(', ');document.getElementById('od-courier').textContent=[o.courier,o.courierService].filter(Boolean).join(' ')||'-';document.getElementById('od-notes').textContent=o.notes||'-';document.getElementById('od-status').innerHTML=`<span class="badge ${o.orderStatus==='packed'?'bpaid':'bunpaid'}">${OSL[o.orderStatus]||o.orderStatus}</span> <span class="badge ${o.paymentVerified?'bpaid':'bunpaid'}">${o.paymentVerified?'Pembayaran terverifikasi':'Pembayaran belum diverifikasi'}</span>${!o.shippingCostConfirmed?' <span class="badge blow">⏳ Ongkir belum dikonfirmasi</span>':''}`;
+  document.getElementById('od-ship-confirm').style.display=o.shippingCostConfirmed?'none':'';
+  if(!o.shippingCostConfirmed)document.getElementById('od-ship-input').value='';
   const proofEl=document.getElementById('od-proof');
   proofEl.innerHTML=o.paymentProofUrl?`<img src="${o.paymentProofUrl}" style="max-width:100%;border-radius:var(--r)" onclick="window.open('${o.paymentProofUrl}','_blank')"/>`:'<div style="font-size:12px;color:var(--t3)">Belum ada bukti transfer</div>';
   document.getElementById('od-verify-row').style.display=o.paymentVerified?'none':'';
@@ -871,8 +879,8 @@ function rOD(id){const o=orders.find(x=>x.id===id);if(!o)return;curOrder=id;docu
 async function toggleItemPacked(itemId,packed){const o=orders.find(x=>x.id===curOrder);if(!o)return;const it=o.items.find(x=>x.id===itemId);if(it)it.packed=packed;await dbUOI(itemId,packed);rOD(curOrder);}
 async function markPaymentVerified(){
   const o=orders.find(x=>x.id===curOrder);if(!o)return;
+  const ok=await dbUO(o.id,{payment_verified:true});if(!ok)return;
   o.paymentVerified=true;
-  await dbUO(o.id,{payment_verified:true});
   const phone=(o.shippingPhone||o.customerPhone||'').replace(/^0/,'62');
   if(phone){
     const msg=`✅ Pembayaranmu untuk pesanan *${o.no}* sudah kami terima dan sesuai!\n\nPesananmu akan segera diproses. Kami akan kirim notifikasi lagi saat pesanan dipacking ya! 📦\n\n_First Bite Instinct — Natural & Nutrition Balance_`;
@@ -880,12 +888,27 @@ async function markPaymentVerified(){
   }
   rOD(curOrder);
 }
+async function confirmShippingCost(){
+  const o=orders.find(x=>x.id===curOrder);if(!o)return;
+  const cost=parseInt(document.getElementById('od-ship-input').value)||0;
+  if(cost<=0){alert('Masukkan nominal ongkir dulu');return;}
+  const newTotal=o.subtotal-(o.discountAmount||0)+cost-(o.shippingDiscount||0);
+  const ok=await dbUO(o.id,{shipping_cost:cost,total:newTotal,shipping_cost_confirmed:true});if(!ok)return;
+  o.shippingCost=cost;o.total=newTotal;o.shippingCostConfirmed=true;
+  const phone=(o.shippingPhone||o.customerPhone||'').replace(/^0/,'62');
+  if(phone){
+    const msg=`📦 Update ongkir untuk pesanan *${o.no}*!\n\nOngkir ${o.courier} ${o.courierService||''}: *${fR(cost)}*\n\nTotal pesananmu sekarang: *${fR(newTotal)}*\n\nMohon transfer tambahan ongkirnya ya, lalu konfirmasi ke kami. Terima kasih! 🙏\n\n_First Bite Instinct — Natural & Nutrition Balance_`;
+    await sb.functions.invoke('proxy',{body:{service:'fonnte-send',target:phone,message:msg}}).catch(()=>{});
+  }
+  rOD(curOrder);rOL();
+}
 async function markPacked(){
   const o=orders.find(x=>x.id===curOrder);if(!o)return;
   if(!o.items.length||!o.items.every(it=>it.packed)){alert('Centang semua item dulu sebelum menandai packing selesai');return;}
   const btn=document.getElementById('btn-mark-packed');btn.disabled=true;btn.textContent='Memproses...';
+  const ok=await dbUO(o.id,{order_status:'packed',packed_at:new Date().toISOString()});
+  if(!ok){btn.disabled=false;btn.textContent='✓ Tandai sudah packing & kirim WA';return;}
   o.orderStatus='packed';
-  await dbUO(o.id,{order_status:'packed',packed_at:new Date().toISOString()});
   const phone=(o.shippingPhone||o.customerPhone||'').replace(/^0/,'62');
   if(phone){
     const msg=`Halo *${o.shippingName||o.customerName}*! 🐾\n\nPesananmu di *First Bite Instinct* sudah kami packing dan siap dikirim!\n\n📦 *${o.no}*\n\nTerima kasih sudah belanja di FBI ya! 🎉\n\n_First Bite Instinct — Natural & Nutrition Balance_`;
@@ -1043,7 +1066,7 @@ async function deletePromo(){
   promos=promos.filter(x=>x.id!==curPromo);
   cSh();rPromoList();
 }
-function openNotif(){const al=[];prods.filter(p=>!p.archived&&tS(p)===0).forEach(p=>al.push(`⛔ Stok habis: ${p.name}`));prods.filter(p=>!p.archived&&tS(p)>0&&tS(p)<=p.minStock).forEach(p=>al.push(`⚠️ Hampir habis: ${p.name} (${tS(p)} pcs)`));custs.filter(c=>iBT(c.petBday)||iBS(c.petBday)).forEach(c=>al.push(`🎂 Ulang tahun anabul: ${c.name} — ${c.pet}`));const up=invs.filter(i=>i.status==='unpaid');if(up.length)al.push(`💰 ${up.length} invoice belum lunas (${fK(up.reduce((s,i)=>s+i.total,0))})`);const po=orders.filter(o=>o.orderStatus==='pending');if(po.length)al.push(`📦 ${po.length} pesanan baru menunggu diproses`);document.getElementById('notif-c').innerHTML=al.length?al.map(a=>`<div style="padding:10px 0;border-bottom:.5px solid var(--b);font-size:13px">${a}</div>`).join(''):'<div style="text-align:center;padding:1rem;font-size:13px;color:var(--t3)">Tidak ada notifikasi</div>';oSh('sh-notif');}
+function openNotif(){const al=[];prods.filter(p=>!p.archived&&tS(p)===0).forEach(p=>al.push(`⛔ Stok habis: ${p.name}`));prods.filter(p=>!p.archived&&tS(p)>0&&tS(p)<=p.minStock).forEach(p=>al.push(`⚠️ Hampir habis: ${p.name} (${tS(p)} pcs)`));custs.filter(c=>iBT(c.petBday)||iBS(c.petBday)).forEach(c=>al.push(`🎂 Ulang tahun anabul: ${c.name} — ${c.pet}`));const up=invs.filter(i=>i.status==='unpaid');if(up.length)al.push(`💰 ${up.length} invoice belum lunas (${fK(up.reduce((s,i)=>s+i.total,0))})`);const po=orders.filter(o=>o.orderStatus==='pending');if(po.length)al.push(`📦 ${po.length} pesanan baru menunggu diproses`);const soc=orders.filter(o=>!o.shippingCostConfirmed);if(soc.length)al.push(`⏳ ${soc.length} pesanan menunggu konfirmasi ongkir Paxel`);document.getElementById('notif-c').innerHTML=al.length?al.map(a=>`<div style="padding:10px 0;border-bottom:.5px solid var(--b);font-size:13px">${a}</div>`).join(''):'<div style="text-align:center;padding:1rem;font-size:13px;color:var(--t3)">Tidak ada notifikasi</div>';oSh('sh-notif');}
 
 async function init(){
   try{
