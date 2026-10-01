@@ -690,6 +690,9 @@ let custFlt='all',curCust=null,editCust=null,cdTab='hist';
 let finTab='ov',rptMo=td().slice(0,7);
 let movT='sale',isNB=false,editProd=null;
 let isFrozenPF=false,isFrozenPE=false;
+let formDirty=false;
+document.addEventListener('input',e=>{if(e.target.matches('input,textarea,select'))formDirty=true;});
+window.addEventListener('beforeunload',e=>{if(formDirty){e.preventDefault();e.returnValue='';}});
 let eiId=null,eiItems=[];
 let finCh=null;
 
@@ -755,7 +758,7 @@ function prevImg(input,imgId,phId){
   reader.readAsDataURL(file);
 }
 
-function gS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');cSh();if(id==='sc-cart')rCart();if(id==='sc-co')rCO();if(id==='sc-invs'){invFlt='all';rIL();}if(id==='sc-orders'){ordFlt='all';rOL();}}
+function gS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');cSh();formDirty=false;if(id==='sc-cart')rCart();if(id==='sc-co')rCO();if(id==='sc-invs'){invFlt='all';rIL();}if(id==='sc-orders'){ordFlt='all';rOL();}}
 function sTab(t){aTab=t;['pos','orders','inventory','customers','finance','settings'].forEach(x=>document.getElementById('ni-'+x).classList.toggle('active',x===t));const m={pos:'sc-pos',orders:'sc-orders',inventory:'sc-inv',customers:'sc-custs',finance:'sc-fin',settings:'sc-settings'};gS(m[t]);if(t==='pos'){rCats();rG();}if(t==='orders')rOL();if(t==='inventory'){rITabs();rInvStock();}if(t==='customers'){rCFlt();rCL();}if(t==='finance'){rFTabs();rFOv();}if(t==='settings'){rSF();rPromoList();}}
 function oSh(id){document.getElementById(id).classList.add('open');document.getElementById('ov').classList.add('open');}
 function cSh(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));document.getElementById('ov').classList.remove('open');}
